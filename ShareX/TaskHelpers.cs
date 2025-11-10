@@ -2259,7 +2259,7 @@ namespace ShareX
 
         public static async Task DownloadDevBuild()
         {
-            GitHubUpdateChecker updateChecker = new GitHubUpdateChecker("ShareX", "DevBuilds")
+            GitHubUpdateChecker updateChecker = new GitHubUpdateChecker("Kairlec", "ShareX-HDR-DevBuilds")
             {
                 IsDev = true,
                 IsPortable = Program.Portable
