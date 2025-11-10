@@ -25,6 +25,7 @@
 
 using ShareX.HelpersLib;
 using ShareX.ImageEffectsLib;
+using ShareX.ScreenCaptureLib.AdvancedGraphics;
 using System.Collections.Generic;
 using System.Drawing;
 
@@ -110,5 +111,8 @@ namespace ShareX.ScreenCaptureLib
 
         // Screen color picker
         public string ScreenColorPickerInfoText = "";
+
+        public bool UseHdr = true;
+        public HdrSettings HdrSettings = new();
     }
 }

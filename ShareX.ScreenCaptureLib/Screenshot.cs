@@ -24,9 +24,14 @@
 #endregion License Information (GPL v3)
 
 using ShareX.HelpersLib;
+using ShareX.ScreenCaptureLib.AdvancedGraphics;
+using ShareX.ScreenCaptureLib.AdvancedGraphics.Direct3D;
+using ShareX.ScreenCaptureLib.AdvancedGraphics.GDI;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Threading;
 
 namespace ShareX.ScreenCaptureLib
 {
@@ -38,6 +43,16 @@ namespace ShareX.ScreenCaptureLib
         public bool CaptureShadow { get; set; } = false;
         public int ShadowOffset { get; set; } = 20;
         public bool AutoHideTaskbar { get; set; } = false;
+        public bool UseWinRTCaptureAPI { get; set; } = true;
+        public HdrSettings HdrSettings { get; set; } = new HdrSettings();
+
+        public static Screenshot FromRegionCapture(RegionCaptureOptions regionCaptureOptions)
+        {
+            Screenshot screenshot = new Screenshot();
+            screenshot.UseWinRTCaptureAPI = regionCaptureOptions.UseHdr;
+            screenshot.HdrSettings = regionCaptureOptions.HdrSettings;
+            return screenshot;
+        }
 
         public Bitmap CaptureRectangle(Rectangle rect)
         {
@@ -122,6 +137,14 @@ namespace ShareX.ScreenCaptureLib
                 return null;
             }
 
+            if (UseWinRTCaptureAPI)
+            {
+                // TODO: only in debug?
+                SharpGen.Runtime.Configuration.EnableObjectTracking = true;
+                SharpGen.Runtime.Configuration.EnableReleaseOnFinalizer = true;
+                return CaptureRectangleDirect3D11(handle, rect, captureCursor);
+            }
+
             IntPtr hdcSrc = NativeMethods.GetWindowDC(handle);
             IntPtr hdcDest = NativeMethods.CreateCompatibleDC(hdcSrc);
             IntPtr hBitmap = NativeMethods.CreateCompatibleBitmap(hdcSrc, rect.Width, rect.Height);
@@ -163,6 +186,51 @@ namespace ShareX.ScreenCaptureLib
             {
                 // Managed can't use SourceCopy | CaptureBlt because of .NET bug
                 g.CopyFromScreen(rect.Location, Point.Empty, rect.Size, CopyPixelOperation.SourceCopy);
+            }
+
+            return bmp;
+        }
+
+        private static ModernCapture _captureInstance;
+        private static Lock _captureInstanceLock = new Lock();
+        private Bitmap CaptureRectangleDirect3D11(IntPtr handle, Rectangle rect, bool captureCursor = false)
+        {
+            var captureMonRegions = new List<ModernCaptureMonitorDescription>();
+            Bitmap bmp;
+
+            if (rect.Width == 0 || rect.Height == 0)
+            {
+                return null;
+            }
+
+            // 1. Get regions and the HDR metadata information
+            foreach (var monitor in MonitorEnumerationHelper.GetMonitors())
+            {
+                if (monitor.MonitorArea.IntersectsWith(rect))
+                {
+                    var screenBoundCopy = monitor.MonitorArea.Copy();
+                    screenBoundCopy.Intersect(rect);
+                    captureMonRegions.Add(new ModernCaptureMonitorDescription
+                    {
+                        DestGdiRect = screenBoundCopy,
+                        MonitorInfo = monitor,
+                        CaptureCursor = captureCursor,
+                    });
+                }
+            }
+
+            // 2. Compose a list of rects for capture
+            var catpureItem = new ModernCaptureItemDescription(rect, captureMonRegions);
+
+            // 3. Request capture and wait for bitmap
+            // 3.1 Determine rects and transform them to DirectX coordinate system
+            // 3.2 Capture and wait for content
+            // 3.3 Shader and draw passes
+            // 3.4 Datastream pass, copy
+            lock (_captureInstanceLock)
+            {
+                if (_captureInstance == null) _captureInstance = new ModernCapture(HdrSettings);
+                bmp = _captureInstance.CaptureAndProcess(HdrSettings, catpureItem);
             }
 
             return bmp;

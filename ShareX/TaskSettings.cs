@@ -29,6 +29,7 @@ using ShareX.ImageEffectsLib;
 using ShareX.IndexerLib;
 using ShareX.MediaLib;
 using ShareX.ScreenCaptureLib;
+using ShareX.ScreenCaptureLib.AdvancedGraphics;
 using ShareX.UploadersLib;
 using System;
 using System.Collections.Generic;
@@ -381,12 +382,23 @@ namespace ShareX
         public bool CaptureAutoHideDesktopIcons = false;
         public Rectangle CaptureCustomRegion = new Rectangle(0, 0, 0, 0);
         public string CaptureCustomWindow = "";
+        public bool UseHDRSupport = true;
+        public HdrSettings HdrSettings = new HdrSettings();
 
         #endregion Capture / General
 
         #region Capture / Region capture
 
-        public RegionCaptureOptions SurfaceOptions = new RegionCaptureOptions();
+        public RegionCaptureOptions SurfaceOptions
+        {
+            get
+            {
+                surfaceOptions.UseHdr = UseHDRSupport;
+                surfaceOptions.HdrSettings = HdrSettings;
+                return surfaceOptions;
+            }
+            set => surfaceOptions = value;
+        }
 
         #endregion Capture / Region capture
 
@@ -408,13 +420,24 @@ namespace ShareX
 
         #region Capture / Scrolling capture
 
-        public ScrollingCaptureOptions ScrollingCaptureOptions = new ScrollingCaptureOptions();
+        public ScrollingCaptureOptions ScrollingCaptureOptions
+        {
+            get
+            {
+                scrollingCaptureOptions.UseHdr = UseHDRSupport;
+                scrollingCaptureOptions.HdrSettings = HdrSettings;
+                return scrollingCaptureOptions;
+            }
+            set => scrollingCaptureOptions = value;
+        }
 
         #endregion Capture / Scrolling capture
 
         #region Capture / OCR
 
         public OCROptions OCROptions = new OCROptions();
+        private RegionCaptureOptions surfaceOptions = new RegionCaptureOptions();
+        private ScrollingCaptureOptions scrollingCaptureOptions = new ScrollingCaptureOptions();
 
         #endregion Capture / OCR
     }
