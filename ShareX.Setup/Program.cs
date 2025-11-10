@@ -93,6 +93,7 @@ namespace ShareX.Setup
         private static string MakeAppxPath => Path.Combine(WindowsKitsDir, "x64", "makeappx.exe");
 
         private const string InnoSetupCompilerPath = @"C:\Program Files (x86)\Inno Setup 6\ISCC.exe";
+        private static string InnoSetupCompilerPathLocal = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Inno Setup 6", "ISCC.exe");
         private const string FFmpegVersion = "8.0";
         private static string FFmpegDownloadURL = $"https://github.com/ShareX/FFmpeg/releases/download/v{FFmpegVersion}/ffmpeg-{FFmpegVersion}-win-x64.zip";
         private const string RecorderDevicesVersion = "0.12.10";
@@ -277,31 +278,39 @@ namespace ShareX.Setup
 
         private static void CompileISSFile(string fileName)
         {
+            string useInnoSetupCompilerPath;
             if (File.Exists(InnoSetupCompilerPath))
             {
-                Console.WriteLine("Compiling setup file: " + fileName);
-
-                using (Process process = new Process())
-                {
-                    ProcessStartInfo psi = new ProcessStartInfo()
-                    {
-                        FileName = InnoSetupCompilerPath,
-                        WorkingDirectory = InnoSetupDir,
-                        Arguments = $"/Q \"{fileName}\"",
-                        UseShellExecute = false
-                    };
-
-                    process.StartInfo = psi;
-                    process.Start();
-                    process.WaitForExit();
-                }
-
-                Console.WriteLine("Setup file compiled: " + fileName);
+                useInnoSetupCompilerPath = InnoSetupCompilerPath;
+            }
+            else if (File.Exists(InnoSetupCompilerPathLocal))
+            {
+                useInnoSetupCompilerPath = InnoSetupCompilerPathLocal;
             }
             else
             {
-                Console.WriteLine("InnoSetup compiler is missing: " + InnoSetupCompilerPath);
+                Console.WriteLine("InnoSetup compiler is missing: " + InnoSetupCompilerPath + " or " + InnoSetupCompilerPathLocal);
+                return;
             }
+
+            Console.WriteLine("Compiling setup file: " + fileName);
+
+            using (Process process = new Process())
+            {
+                ProcessStartInfo psi = new ProcessStartInfo()
+                {
+                    FileName = useInnoSetupCompilerPath,
+                    WorkingDirectory = InnoSetupDir,
+                    Arguments = $"/Q \"{fileName}\"",
+                    UseShellExecute = false
+                };
+
+                process.StartInfo = psi;
+                process.Start();
+                process.WaitForExit();
+            }
+
+            Console.WriteLine("Setup file compiled: " + fileName);
         }
 
         private static void CompileAppx(string contentDirectory, string outputPackageName)
