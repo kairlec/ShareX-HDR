@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using System.Threading;
+using ShareX.HelpersLib;
 using ShareX.ScreenCaptureLib.AdvancedGraphics.Direct3D.Shaders;
 using ShareX.ScreenCaptureLib.AdvancedGraphics.GDI;
 using SharpGen.Runtime;
@@ -191,7 +192,28 @@ public class ModernCapture : IDisposable, DisposableCache
     public Bitmap CaptureAndProcess(HdrSettings hdrSettings, ModernCaptureItemDescription item)
     {
         // TODO: support multi-gpu setups
-        item.Regions = CursorFilter.FilterByCursorGpu(deviceCache, idxgiFactory1, item.Regions);
+        try
+        {
+            item.Regions = CursorFilter.FilterByCursorGpu(deviceCache, idxgiFactory1, item.Regions);
+        }
+        catch (InvalidOperationException e)
+        {
+            if (e.Message == "Monitor not found")
+            {
+                DebugHelper.WriteException(e,"Could not find monitor for screenshot, re-initializing devices...");
+                ReInit();
+                try
+                {
+                    item.Regions = CursorFilter.FilterByCursorGpu(deviceCache, idxgiFactory1, item.Regions);
+                }
+                catch (InvalidOperationException ee)
+                {
+                    DebugHelper.WriteException(ee, "Could not find monitor for screenshot, even after re-initialization.");
+                    throw new ApplicationException("Could not find monitor for screenshot after re-initialization");
+                }
+            }
+        }
+
         Settings = hdrSettings;
         List<DisposableCache> disposableCaches = [];
         try
